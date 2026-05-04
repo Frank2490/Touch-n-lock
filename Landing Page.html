@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Touch 'n' Lock — Twój odcisk. Twoja kłódka.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #0C0C0C;
+    --bg-warm: #0f0e0d;
+    --bg-card: #131211;
+    --bg-card2: #161514;
+    --accent: #4A9EFF;
+    --accent-dim: rgba(74,158,255,0.12);
+    --accent-glow: rgba(74,158,255,0.35);
+    --white: #F0F4FF;
+    --white-dim: rgba(240,244,255,0.55);
+    --white-faint: rgba(240,244,255,0.12);
+    --mono: 'Courier New', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--white);
+    font-family: 'Inter', sans-serif;
+    font-weight: 300;
+    line-height: 1.6;
+    overflow-x: hidden;
+    /* subtle warm noise overlay */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+  }
+
+  /* ─── NAVIGATION ─── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    padding: 28px 60px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(to bottom, rgba(12,12,12,0.95) 0%, transparent 100%);
+  }
+
+  .nav-logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: 0.15em;
+    color: var(--white);
+    text-decoration: none;
+  }
+
+  .nav-logo span { color: var(--accent); }
+
+  .nav-links {
+    display: flex;
+    gap: 40px;
+    list-style: none;
+  }
+
+  .nav-links a {
+    color: var(--white-dim);
+    text-decoration: none;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: color 200ms ease;
+  }
+
+  .nav-links a:hover { color: var(--white); }
+
+  /* ─── HERO ─── */
+  #hero {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    min-height: 600px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 0;
+  }
+
+  .hero-bg-gradient {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 60% at 50% 50%, rgba(74,158,255,0.07) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .hero-fingerprint-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    will-change: transform;
+    z-index: 1;
+  }
+
+  /* Product image wrapper */
+  .product-img-wrap {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Premium breathing glow on closed lock canvas */
+  #productCanvas {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    filter:
+      drop-shadow(0 0 40px rgba(74,158,255,0.22))
+      drop-shadow(0 32px 64px rgba(0,0,0,0.9));
+    animation: lockBreathe 4s ease-in-out infinite;
+    will-change: opacity, filter;
+    display: block;
+  }
+
+  @keyframes lockBreathe {
+    0%, 100% {
+      filter:
+        drop-shadow(0 0 32px rgba(74,158,255,0.18))
+        drop-shadow(0 32px 64px rgba(0,0,0,0.9));
+    }
+    50% {
+      filter:
+        drop-shadow(0 0 56px rgba(74,158,255,0.38))
+        drop-shadow(0 32px 64px rgba(0,0,0,0.9));
+    }
+  }
+
+  /* Scan container — hidden, kept for structure */
+  .scan-container { display: none; }
+
+  /* Ground reflection under product */
+  .product-reflection {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60%;
+    height: 30px;
+    background: radial-gradient(ellipse, rgba(74,158,255,0.18) 0%, transparent 70%);
+    filter: blur(8px);
+    pointer-events: none;
+  }
+
+  .hero-content {
+    display: none;
+  }
+
+  .hero-label {
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+    animation: heroFadeUp 0.8s ease 0.3s both;
+  }
+
+  .hero-title {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(42px, 6vw, 80px);
+    font-weight: 800;
+    line-height: 1.0;
+    letter-spacing: -0.02em;
+    margin-bottom: 16px;
+    animation: heroFadeUp 0.8s ease 0.5s both;
+  }
+
+  .hero-tagline {
+    font-size: clamp(14px, 1.4vw, 16px);
+    color: var(--white-dim);
+    font-weight: 300;
+    letter-spacing: 0.04em;
+    margin-bottom: 36px;
+    max-width: 380px;
+    animation: heroFadeUp 0.8s ease 0.7s both;
+  }
+
+  .btn-cta {
+    display: inline-block;
+    padding: 14px 40px;
+    border: 1.5px solid var(--accent);
+    color: var(--accent);
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: background 200ms ease, color 200ms ease, box-shadow 200ms ease;
+    animation: heroFadeUp 0.8s ease 0.9s both;
+  }
+
+  .btn-cta:hover {
+    background: var(--accent);
+    color: #0C0C0C;
+    box-shadow: 0 0 32px rgba(74,158,255,0.4);
+  }
+
+  .hero-scroll-hint {
+    position: absolute;
+    bottom: 36px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    animation: heroFadeUp 0.8s ease 1.4s both;
+    z-index: 3;
+  }
+
+  .scroll-line {
+    width: 1px;
+    height: 48px;
+    background: linear-gradient(to bottom, var(--accent), transparent);
+    animation: scrollPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes scrollPulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+
+  .scroll-label {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--white-dim);
+  }
+
+  /* Remove animation opacity-0 for elements inside hero - use JS reveal instead */
+  .hero-label,
+  .hero-title,
+  .hero-tagline,
+  .btn-cta {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: heroFadeUp 0.8s ease forwards;
+  }
+
+  .hero-label  { animation-delay: 0.3s; }
+  .hero-title  { animation-delay: 0.5s; }
+  .hero-tagline{ animation-delay: 0.7s; }
+  .btn-cta     { animation-delay: 0.9s; }
+
+  @keyframes heroFadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ─── VALUE PROP ─── */
+  #value-prop {
+    padding: 140px 40px;
+    text-align: center;
+    position: relative;
+  }
+
+  .value-prop-text {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(32px, 5vw, 68px);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .value-prop-text .highlight {
+    color: var(--accent);
+  }
+
+  /* ─── FEATURES ─── */
+  #features {
+    padding: 80px 60px 120px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .section-label {
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 64px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .section-label::after {
+    content: '';
+    display: block;
+    height: 1px;
+    width: 48px;
+    background: var(--accent);
+    opacity: 0.4;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+  }
+
+  .feature-card {
+    background: var(--bg-card);
+    padding: 48px 40px;
+    position: relative;
+    overflow: hidden;
+    transition: box-shadow 300ms ease, background 300ms ease;
+  }
+
+  .feature-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0;
+    transition: opacity 300ms ease;
+  }
+
+  .feature-card:hover {
+    box-shadow: 0 0 40px rgba(74,158,255,0.1) inset;
+    background: var(--bg-card2);
+  }
+
+  .feature-card:hover::before {
+    opacity: 0.6;
+  }
+
+  .feature-icon {
+    width: 44px;
+    height: 44px;
+    margin-bottom: 28px;
+    color: var(--accent);
+  }
+
+  .feature-number {
+    font-family: 'Syne', sans-serif;
+    font-size: 48px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, var(--white) 0%, rgba(240,244,255,0.5) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .feature-unit {
+    font-size: 18px;
+    font-weight: 400;
+  }
+
+  .feature-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    letter-spacing: -0.01em;
+  }
+
+  .feature-desc {
+    font-size: 14px;
+    color: var(--white-dim);
+    line-height: 1.5;
+  }
+
+  /* ─── HOW IT WORKS ─── */
+  #how-it-works {
+    padding: 80px 60px 120px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .steps-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    margin-top: 0;
+  }
+
+  .step-card {
+    background: var(--bg-card);
+    padding: 48px 40px;
+    position: relative;
+  }
+
+  .step-number {
+    font-family: 'Syne', sans-serif;
+    font-size: 80px;
+    font-weight: 800;
+    line-height: 1;
+    color: rgba(74,158,255,0.1);
+    margin-bottom: 28px;
+    letter-spacing: -0.04em;
+  }
+
+  .step-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    letter-spacing: -0.01em;
+  }
+
+  .step-desc {
+    font-size: 14px;
+    color: var(--white-dim);
+    line-height: 1.65;
+  }
+
+  .step-connector {
+    position: absolute;
+    right: -1px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 2px;
+    height: 40px;
+    background: linear-gradient(to bottom, transparent, var(--accent), transparent);
+    opacity: 0.3;
+  }
+
+  /* ─── SPECS ─── */
+  #specs {
+    padding: 80px 60px 120px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .specs-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0;
+  }
+
+  .specs-table tr {
+    border-bottom: 1px solid rgba(240,244,255,0.06);
+  }
+
+  .specs-table tr:first-child {
+    border-top: 1px solid rgba(240,244,255,0.06);
+  }
+
+  .specs-table td {
+    padding: 20px 0;
+    font-size: 14px;
+  }
+
+  .specs-table td:first-child {
+    color: var(--white-dim);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    width: 40%;
+    font-family: var(--mono);
+  }
+
+  .specs-table td:last-child {
+    color: var(--white);
+    font-family: var(--mono);
+    font-size: 14px;
+  }
+
+  .specs-table tr:hover td {
+    color: var(--white);
+  }
+
+  /* ─── CTA SECTION ─── */
+  #cta {
+    padding: 140px 60px;
+    text-align: center;
+    background: linear-gradient(135deg,
+      rgba(74,158,255,0.08) 0%,
+      rgba(74,158,255,0.04) 50%,
+      rgba(74,158,255,0.08) 100%
+    );
+    border-top: 1px solid rgba(74,158,255,0.15);
+    border-bottom: 1px solid rgba(74,158,255,0.15);
+    position: relative;
+    overflow: hidden;
+  }
+
+  #cta::before {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(74,158,255,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .cta-title {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(36px, 5vw, 64px);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 20px;
+    position: relative;
+  }
+
+  .cta-sub {
+    font-size: 16px;
+    color: var(--white-dim);
+    margin-bottom: 48px;
+    position: relative;
+  }
+
+  .btn-cta-large {
+    display: inline-block;
+    padding: 18px 56px;
+    border: 1.5px solid var(--accent);
+    color: var(--accent);
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: background 200ms ease, color 200ms ease, box-shadow 200ms ease;
+    position: relative;
+  }
+
+  .btn-cta-large:hover {
+    background: var(--accent);
+    color: #0C0C0C;
+    box-shadow: 0 0 48px rgba(74,158,255,0.5);
+  }
+
+  /* ─── FOOTER ─── */
+  footer {
+    padding: 48px 60px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid rgba(240,244,255,0.06);
+  }
+
+  .footer-logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: 0.15em;
+    color: var(--white);
+  }
+
+  .footer-logo span { color: var(--accent); }
+
+  .footer-copy {
+    font-size: 12px;
+    color: var(--white-dim);
+    letter-spacing: 0.04em;
+  }
+
+
+  /* ─── STICKY HERO SCROLL WRAPPER ─── */
+  #heroScrollWrapper {
+    position: relative;
+    height: calc(100vh + 480px); /* 100vh hero + 480px scroll space for animation */
+  }
+
+  #hero {
+    position: sticky !important;
+    top: 0;
+    height: 100vh !important;
+  }
+
+  /* Open lock canvas — layered on top, animated by scroll */
+  #productCanvasOpen {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    opacity: 0;
+    transform: scale(0.95);
+    will-change: opacity, transform;
+    filter:
+      drop-shadow(0 0 48px rgba(74,158,255,0.30))
+      drop-shadow(0 32px 64px rgba(0,0,0,0.9));
+    display: block;
+    pointer-events: none;
+  }
+
+  /* Closed lock canvas — will fade out */
+  #productCanvas {
+    position: relative;
+    will-change: opacity;
+  }
+
+
+  /* ─── HERO TEXT REVEAL — below sticky wrapper ─── */
+  .hero-text-reveal {
+    text-align: center;
+    padding: 100px 40px 80px;
+    opacity: 0;
+    transform: translateY(32px);
+    transition: opacity 0.9s ease, transform 0.9s ease;
+  }
+
+  .hero-text-reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .hero-text-reveal .hero-label {
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+  }
+
+  .hero-text-reveal .hero-title {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(48px, 7vw, 96px);
+    font-weight: 800;
+    line-height: 1.0;
+    letter-spacing: -0.02em;
+    margin-bottom: 20px;
+  }
+
+  .hero-text-reveal .hero-tagline {
+    font-size: clamp(14px, 1.6vw, 18px);
+    color: var(--white-dim);
+    font-weight: 300;
+    letter-spacing: 0.04em;
+    margin-bottom: 44px;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .hero-text-reveal .btn-cta {
+    display: inline-block;
+    padding: 14px 40px;
+    border: 1.5px solid var(--accent);
+    color: var(--accent);
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: background 200ms ease, color 200ms ease, box-shadow 200ms ease;
+  }
+
+  .hero-text-reveal .btn-cta:hover {
+    background: var(--accent);
+    color: #0C0C0C;
+    box-shadow: 0 0 32px rgba(74,158,255,0.4);
+  }
+
+  /* ─── SCROLL REVEAL ─── */
+  .reveal {
+    opacity: 0;
+    transform: translateY(22px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .reveal-delay-1 { transition-delay: 0.1s; }
+  .reveal-delay-2 { transition-delay: 0.2s; }
+  .reveal-delay-3 { transition-delay: 0.3s; }
+  .reveal-delay-4 { transition-delay: 0.4s; }
+
+  /* ─── DIVIDER ─── */
+  .section-divider {
+    width: 1px;
+    height: 80px;
+    background: linear-gradient(to bottom, transparent, rgba(74,158,255,0.3), transparent);
+    margin: 0 auto;
+  }
+
+</style>
+</head>
+<body>
+
+<!-- NAVIGATION -->
+<nav>
+  <a href="#" class="nav-logo">Touch <span>'n'</span> Lock</a>
+  <ul class="nav-links">
+    <li><a href="#features">Cechy</a></li>
+    <li><a href="#how-it-works">Działanie</a></li>
+    <li><a href="#specs">Specyfikacja</a></li>
+    <li><a href="#cta">Kup teraz</a></li>
+  </ul>
+</nav>
+
+<!-- ─── HERO SCROLL WRAPPER ─── -->
+<div id="heroScrollWrapper">
+<!-- ─── HERO ─── -->
+<section id="hero">
+  <div class="hero-bg-gradient"></div>
+
+  <div class="hero-fingerprint-wrap" id="heroFp">
+    <!-- Product photo — white bg removed via Canvas pixel processing -->
+    <div class="product-img-wrap">
+      <canvas id="productCanvas"></canvas>
+      <canvas id="productCanvasOpen"></canvas>
+    </div>
+    <div class="product-reflection"></div>
+
+    <!-- Scanning overlay -->
+    <div class="scan-container">
+      <div class="scan-glow"></div>
+      <div class="scan-line"></div>
+    </div>
+  </div>
+
+  <!-- scroll hint removed -->
+</section>
+</div><!-- /heroScrollWrapper -->
+
+<!-- ─── HERO TEXT — appears after lock opens ─── -->
+<div class="hero-text-reveal" id="heroText">
+  <p class="hero-label">Kłódka biometryczna na odcisk palca</p>
+  <h1 class="hero-title">Twój odcisk.<br>Twoja kłódka.</h1>
+  <p class="hero-tagline">Żadnych kluczy. Nigdy więcej.</p>
+  <a href="#features" class="btn-cta">Sprawdź możliwości</a>
+</div>
+
+<!-- ─── VALUE PROP ─── -->
+<section id="value-prop">
+  <p class="value-prop-text reveal">
+    Żadnych kluczy.<br>
+    Żadnych kodów.<br>
+    <span class="highlight">Żadnych kompromisów.</span>
+  </p>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ─── FEATURES ─── -->
+<section id="features">
+  <p class="section-label reveal">Parametry</p>
+  <div class="features-grid">
+
+    <div class="feature-card reveal reveal-delay-1">
+      <!-- Icon: lightning bolt / speed -->
+      <svg class="feature-icon" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M26 4L10 24H22L18 40L34 20H22L26 4Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+      </svg>
+      <div class="feature-number">0.2<span class="feature-unit">s</span></div>
+      <h3 class="feature-title">Odblokowanie w 0.2s</h3>
+      <p class="feature-desc">Rozpoznawanie 360° pod dowolnym kątem. Błyskawiczne.</p>
+    </div>
+
+    <div class="feature-card reveal reveal-delay-2">
+      <!-- Icon: users -->
+      <svg class="feature-icon" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="17" cy="16" r="5" stroke="currentColor" stroke-width="1.5"/>
+        <circle cx="30" cy="16" r="5" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M6,36 Q6,26 17,26 Q22,26 25,28" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M20,36 Q20,26 30,26 Q40,26 40,36" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      <div class="feature-number">10</div>
+      <h3 class="feature-title">10 grup odcisków</h3>
+      <p class="feature-desc">Udostępnij dostęp rodzinie i znajomym. Bez aplikacji.</p>
+    </div>
+
+    <div class="feature-card reveal reveal-delay-3">
+      <!-- Icon: shield/ip65 -->
+      <svg class="feature-icon" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M22 4L8 10V22C8 31 22 40 22 40C22 40 36 31 36 22V10L22 4Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+        <path d="M16 22L20 26L28 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="feature-number">IP67</div>
+      <h3 class="feature-title">Klasa ochrony IP67</h3>
+      <p class="feature-desc">Pyłoszczelna, wodoodporna. Idealna na zewnątrz.</p>
+    </div>
+
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ─── HOW IT WORKS ─── -->
+<section id="how-it-works">
+  <p class="section-label reveal">Jak to działa</p>
+  <div class="steps-grid">
+
+    <div class="step-card reveal reveal-delay-1">
+      <div class="step-number">01</div>
+      <h3 class="step-title">Zarejestruj odcisk</h3>
+      <p class="step-desc">Jednorazowa konfiguracja w kilkanaście sekund. Kłódka zapamiętuje do 10 grup odcisków palców.</p>
+      <div class="step-connector"></div>
+    </div>
+
+    <div class="step-card reveal reveal-delay-2">
+      <div class="step-number">02</div>
+      <h3 class="step-title">Przyłóż palec</h3>
+      <p class="step-desc">Dotknij sensora pod dowolnym kątem 360°. Kłódka otwiera się w 0.2 sekundy — bez klucza, bez kodu.</p>
+      <div class="step-connector"></div>
+    </div>
+
+    <div class="step-card reveal reveal-delay-3">
+      <div class="step-number">03</div>
+      <h3 class="step-title">Gotowe</h3>
+      <p class="step-desc">Brak aplikacji, brak Bluetooth, brak haseł. Działa samodzielnie — na siłowni, w szkole, na ogrodzeniu.</p>
+    </div>
+
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ─── SPECS ─── -->
+<section id="specs">
+  <p class="section-label reveal">Specyfikacja techniczna</p>
+  <table class="specs-table reveal reveal-delay-1">
+    <tr>
+      <td>Sposób odblokowania</td>
+      <td>Odcisk palca (biometria)</td>
+    </tr>
+    <tr>
+      <td>Czas rozpoznawania</td>
+      <td>≤ 0.2s, 360° dowolny kąt</td>
+    </tr>
+    <tr>
+      <td>Pojemność pamięci</td>
+      <td>10 grup odcisków palców</td>
+    </tr>
+    <tr>
+      <td>Klasa ochrony</td>
+      <td>IP67 — pyłoszczelny, zanurzalny</td>
+    </tr>
+    <tr>
+      <td>Zasilanie</td>
+      <td>Wbudowany akumulator litowy (ładowany)</td>
+    </tr>
+    <tr>
+      <td>Łączność</td>
+      <td>Brak (BEZ Bluetooth, BEZ WiFi, BEZ aplikacji)</td>
+    </tr>
+    <tr>
+      <td>Materiał obudowy</td>
+      <td>Stop cynku, korpus bryzgoszczelny</td>
+    </tr>
+    <tr>
+      <td>Zastosowanie</td>
+      <td>Szafki, ogrodzenia, siłownia, szkoła, podróże</td>
+    </tr>
+    <tr>
+      <td>Alarm</td>
+      <td>Sygnał niskiego poziomu baterii</td>
+    </tr>
+    <tr>
+      <td>Cena</td>
+      <td>99 zł</td>
+    </tr>
+  </table>
+</section>
+
+<!-- ─── CTA SECTION ─── -->
+<section id="cta">
+  <h2 class="cta-title reveal">Zamów teraz.<br>99 zł.</h2>
+  <p class="cta-sub reveal reveal-delay-1">Touch 'n' Lock — kłódka biometryczna. Bez klucza, bez kodu, bez aplikacji.</p>
+  <a href="#" class="btn-cta-large reveal reveal-delay-2">Kup Touch 'n' Lock</a>
+</section>
+
+<!-- ─── FOOTER ─── -->
+<footer>
+  <div class="footer-logo">Touch <span>'n'</span> Lock</div>
+  <p class="footer-copy">© 2026 Touch 'n' Lock. Wszelkie prawa zastrzeżone.</p>
+</footer>
+
+<script>
+  // ─── PRODUCT IMAGE — remove white background via Canvas ───
+  (function() {
+    const canvas = document.getElementById('productCanvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = 'uploads/S43b68a6c87cc49dab0f8db8db20c42cc9.avif';
+    img.onload = function() {
+      canvas.width  = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      // Remove near-white pixels (threshold-based alpha cutout)
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i], g = data[i+1], b = data[i+2];
+        // Brightness of pixel
+        const brightness = (r + g + b) / 3;
+        // How "grey/white" it is — low saturation
+        const maxC = Math.max(r, g, b);
+        const minC = Math.min(r, g, b);
+        const saturation = maxC === 0 ? 0 : (maxC - minC) / maxC;
+        if (brightness > 210 && saturation < 0.12) {
+          // Near-white: make transparent
+          data[i+3] = 0;
+        } else if (brightness > 180 && saturation < 0.08) {
+          // Transition zone: partial alpha for smooth edge
+          const alpha = (255 - brightness) / (255 - 180);
+          data[i+3] = Math.round(alpha * 255);
+        }
+      }
+      ctx.putImageData(imageData, 0, 0);
+      // Size canvas: 72% of viewport height
+      const maxH = Math.round(window.innerHeight * 0.72);
+      const ratio = img.naturalWidth / img.naturalHeight;
+      const dispH = maxH;
+      const dispW = Math.round(maxH * ratio);
+      canvas.style.width  = dispW + 'px';
+      canvas.style.height = dispH + 'px';
+    };
+    img.onerror = function() {
+      // Fallback: show img tag if canvas fails
+      canvas.insertAdjacentHTML('afterend',
+        '<img src="uploads/S43b68a6c87cc49dab0f8db8db20c42cc9.avif" style="width:320px;object-fit:contain;" alt="Touch n Lock">'
+      );
+    };
+  })();
+
+  // ─── OPEN LOCK IMAGE — remove white background via Canvas ───
+  (function() {
+    const canvas = document.getElementById('productCanvasOpen');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = 'uploads/S07c3584d8c494dccad72b45402c21d3ch.avif';
+    img.onload = function() {
+      canvas.width  = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i], g = data[i+1], b = data[i+2];
+        const brightness = (r + g + b) / 3;
+        const maxC = Math.max(r, g, b);
+        const minC = Math.min(r, g, b);
+        const saturation = maxC === 0 ? 0 : (maxC - minC) / maxC;
+        if (brightness > 210 && saturation < 0.12) {
+          data[i+3] = 0;
+        } else if (brightness > 180 && saturation < 0.08) {
+          const alpha = (255 - brightness) / (255 - 180);
+          data[i+3] = Math.round(alpha * 255);
+        }
+      }
+      ctx.putImageData(imageData, 0, 0);
+      // Match closed canvas display size — wait for it to be ready
+      function applySizeWhenReady() {
+        const closedCanvas = document.getElementById('productCanvas');
+        if (closedCanvas.style.width && closedCanvas.style.width !== '') {
+          canvas.style.width  = closedCanvas.style.width;
+          canvas.style.height = closedCanvas.style.height;
+        } else {
+          // Closed canvas not sized yet — compute same way
+          const maxH = Math.min(window.innerHeight - 180, 520);
+          const ratio = img.naturalWidth / img.naturalHeight;
+          canvas.style.width  = Math.round(maxH * ratio) + 'px';
+          canvas.style.height = maxH + 'px';
+        }
+      }
+      applySizeWhenReady();
+    };
+  })();
+
+  // ─── SCROLL REVEAL ───
+  const reveals = document.querySelectorAll('.reveal');
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, {
+    threshold: 0.1,
+    rootMargin: '0px 0px -40px 0px'
+  });
+
+  reveals.forEach(el => observer.observe(el));
+
+  // ─── SCROLL-DRIVEN LOCK ANIMATION ───
+  // The hero is sticky; user scrolls through 480px of animation space
+  // before the page continues. We map scroll 0–480px to lock closed→open.
+
+  const ANIM_RANGE = 480; // px of scroll for full open
+
+  const canvasClosed = document.getElementById('productCanvas');
+  const canvasOpen   = document.getElementById('productCanvasOpen');
+
+  function easeInOut(t) {
+    return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+  }
+
+  function updateLockAnim() {
+    const scrollY = window.scrollY;
+    const raw      = Math.min(Math.max(scrollY / ANIM_RANGE, 0), 1);
+    const progress = easeInOut(raw);
+
+    // Stop CSS breathe animation once scroll starts — JS takes over filter
+    if (scrollY > 0) {
+      canvasClosed.style.animation = 'none';
+    } else {
+      canvasClosed.style.animation = '';
+    }
+
+    // ── CLOSED: blur out + brighten as it exits ──
+    const closedBlur       = progress * 12;
+    const closedBrightness = 1 + progress * 0.8;
+    canvasClosed.style.opacity = 1 - progress;
+    canvasClosed.style.filter  =
+      `brightness(${closedBrightness}) blur(${closedBlur}px) ` +
+      `drop-shadow(0 0 32px rgba(74,158,255,0.22)) ` +
+      `drop-shadow(0 32px 64px rgba(0,0,0,0.9))`;
+
+    // ── OPEN: sharp entry from slight bottom, no blur ──
+    const openProgress  = Math.min(Math.max((progress - 0.2) / 0.8, 0), 1);
+    const openEased     = easeInOut(openProgress);
+    const openTranslate = 28 * (1 - openEased);
+    canvasOpen.style.opacity   = openEased;
+    canvasOpen.style.transform = `translateY(${openTranslate}px) scale(${0.97 + openEased * 0.05})`;
+    canvasOpen.style.filter    =
+      `drop-shadow(0 0 48px rgba(74,158,255,0.30)) ` +
+      `drop-shadow(0 32px 64px rgba(0,0,0,0.9))`;
+  }
+
+  window.addEventListener('scroll', updateLockAnim, { passive: true });
+  updateLockAnim(); // init state
+
+  // ─── HERO TEXT REVEAL after lock opens ───
+  const heroText = document.getElementById('heroText');
+  function checkHeroTextReveal() {
+    // Reveal when scroll >= ANIM_RANGE (lock fully open)
+    if (window.scrollY >= ANIM_RANGE * 0.85) {
+      heroText.classList.add('visible');
+    } else {
+      heroText.classList.remove('visible');
+    }
+  }
+  window.addEventListener('scroll', checkHeroTextReveal, { passive: true });
+  checkHeroTextReveal();
+
+  // ─── NAV SCROLL HIDE/SHOW ───
+  let lastScroll = 0;
+  const nav = document.querySelector('nav');
+
+  window.addEventListener('scroll', () => {
+    const currentScroll = window.scrollY;
+    if (currentScroll > 80) {
+      nav.style.background = 'rgba(12,12,12,0.95)';
+      nav.style.backdropFilter = 'blur(12px)';
+    } else {
+      nav.style.background = '';
+      nav.style.backdropFilter = '';
+    }
+    lastScroll = currentScroll;
+  }, { passive: true });
+</script>
+
+</body>
+</html>

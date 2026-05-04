@@ -1,0 +1,12 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Working screenshots (dev artifacts)
+screenshots/
+
+# Editor
+.vscode/
+*.swp
+*.swo
